@@ -10,7 +10,7 @@ from util import (INTERVAL_PATTERN, MAIN_WIN_HEIGHT, MAIN_WIN_WIDTH,
                   get_user_access_token, setup)
 
 
-def do_action(key: str, thread: CheckTweet) -> bool:
+def do_action(key: str, thread: CheckTweet, monitor: StatusMonitor) -> bool:
     if key == "q":
         return False, False
     elif key == "p":
@@ -21,6 +21,9 @@ def do_action(key: str, thread: CheckTweet) -> bool:
         thread.update_interval(INTERVAL_PATTERN[1])
     elif key == "a":
         thread.update_interval(INTERVAL_PATTERN[2])
+    elif key == "c":
+        thread.update_copy_flag(not thread.get_copy_flag())
+        monitor.switch_pause_panel(enable_copy=thread.get_copy_flag())
     return True, False
 
 
@@ -65,7 +68,7 @@ def main(stdscr):
         while True:
             try:
                 key = stdscr.getkey()
-                exit_flag, need_more_loop_flag = do_action(key, check_tweet)
+                exit_flag, need_more_loop_flag = do_action(key, check_tweet, monitor)
                 if exit_flag:
                     pass
                 else:

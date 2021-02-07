@@ -44,6 +44,7 @@ class CheckTweet(Thread):
         self.search_query = search_query
         self.status_monitor = monitor
         self.since_id = "0"
+        self.copy_flag = True
         clear_logged_battle_id()
 
     def run(self):
@@ -52,7 +53,15 @@ class CheckTweet(Thread):
         run this therad.
         """
         while self.running_flag:
-            self.get_battle_id_from_twitter()
+            if self.copy_flag:
+                try:
+                    self.get_battle_id_from_twitter()
+                    self.update_monitor(interval=self.interval)
+                except tm.RequestFaildError as faild:
+                    self.update_monitor(error=faild)
+                else:
+                    pass
+
             time.sleep(self.interval)
 
     def stop(self):
@@ -93,29 +102,41 @@ class CheckTweet(Thread):
         else:
             raise ValueError("{} is invalid interval.".format(seconds))
 
+    def update_copy_flag(self, new_copy_flag: bool):
+        """update_copy_flag
+
+        コピー動作をするかどうかのフラグを更新する
+        """
+        self.copy_flag = new_copy_flag
+        # self.update_monitor(enable_copy=new_copy_flag)
+
+    def get_copy_flag(self):
+        """get_copy_flag
+
+        コピー動作のフラグの状態を返す
+        Returns:
+            bool: コピー動作のフラグ
+        """
+        return self.copy_flag
+
     def get_battle_id_from_twitter(self):
         """get_battle_id_from_twitter
 
         ツイートを検索して、重複のないツイートが見つかったらクリップボードへ挿入する
         """
-        try:
-            tweets = self.tweet.search_tweet(self.search_query, self.since_id)
-            battle_id = None
-            for tweet in tweets:
-                _, battle_id = get_rescue_ID(tweet.get("text"))
-                tweet_date = dt.datetime.strptime(
-                    tweet.get("created_at"), self.TWEET_DATETIME_FORMAT
-                ).astimezone(JST)
-                if log_battle_id(battle_id, tweet_date.isoformat()):
-                    # IDのみの指定だと取得漏れが発生しやすくなるので取得開始位置にバッファをもたせる
-                    self.since_id = str(tweet.get("id") - TWEET_ID_BUFFER)
-                    pyperclip.copy(battle_id)
-                    self.update_monitor(newid=battle_id, date=tweet_date)
-                    break
-            self.update_monitor(interval=self.interval)
-
-        except tm.RequestFaildError as faild:
-            self.update_monitor(error=faild)
+        tweets = self.tweet.search_tweet(self.search_query, self.since_id)
+        battle_id = None
+        for tweet in tweets:
+            _, battle_id = get_rescue_ID(tweet.get("text"))
+            tweet_date = dt.datetime.strptime(
+                tweet.get("created_at"), self.TWEET_DATETIME_FORMAT
+            ).astimezone(JST)
+            if log_battle_id(battle_id, tweet_date.isoformat()):
+                # IDのみの指定だと取得漏れが発生しやすくなるので取得開始位置にバッファをもたせる
+                self.since_id = str(tweet.get("id") - TWEET_ID_BUFFER)
+                pyperclip.copy(battle_id)
+                self.update_monitor(newid=battle_id, date=tweet_date)
+                break
 
 
 class RefreshStatusMonitor(Thread):

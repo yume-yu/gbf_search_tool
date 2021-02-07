@@ -7,16 +7,37 @@ Attributes:
     api_monitor (curses.window): 直前のAPIへのリクエストステータスを表示するサブウィンドウ
 """
 import curses
+import curses.panel
 import datetime as dt
+import time
 
 from tweet import RequestFaildError
 from util import (BOTTOM_PART_HEIGHT, JST, MAIN_WIN_HEIGHT, MAIN_WIN_WIDTH,
                   MIDDLE_PART_HEIGHT, TOP_PART_HEIGHT, gbss_addstr)
 
+PAUSED_STR = "-- PAUSE --"
+
 
 class StatusMonitor:
     def __init__(self, stdscr, ratelimit_statuses, boss_info: dict):
-        self.window = stdscr
+        height = 5
+        width = len(PAUSED_STR) + 4
+        self.paused_win = curses.newwin(
+            height,
+            width,
+            int((MAIN_WIN_HEIGHT - height) / 2),
+            int((MAIN_WIN_WIDTH - width) / 2),
+        )
+        self.paused_win.clear()
+        self.paused_win.bkgd(" ", curses.color_pair(4))
+        self.paused_win.addstr(
+            2, round((width - len(PAUSED_STR)) / 2), PAUSED_STR, curses.A_BOLD
+        )
+        self.paused_win.border()
+        self.paused_win.refresh()
+        self.paused_panel = curses.panel.new_panel(self.paused_win)
+
+        self.window = curses.newwin(MAIN_WIN_HEIGHT, MAIN_WIN_WIDTH, 0, 0)
         self.ratelimit_statuses = ratelimit_statuses
         self.subwin_width = int(MAIN_WIN_WIDTH / 2)
 
@@ -29,7 +50,7 @@ class StatusMonitor:
         self.title_pad.refresh()
 
         # 履歴部分基礎描画
-        self.recent_pad = stdscr.derwin(
+        self.recent_pad = self.window.derwin(
             MIDDLE_PART_HEIGHT, self.subwin_width, TOP_PART_HEIGHT, 0
         )
         self.recent_pad.bkgd(curses.color_pair(4))
@@ -40,7 +61,7 @@ class StatusMonitor:
         self.recent_pad.refresh()
 
         # API情報基礎描画
-        self.api_monitor = stdscr.derwin(
+        self.api_monitor = self.window.derwin(
             MIDDLE_PART_HEIGHT, self.subwin_width, TOP_PART_HEIGHT, self.subwin_width
         )
         self.api_monitor.bkgd(curses.color_pair(4))
@@ -56,7 +77,7 @@ class StatusMonitor:
         self.api_monitor.refresh()
 
         # 操作説明描画
-        self.control_explain = stdscr.derwin(
+        self.control_explain = self.window.derwin(
             BOTTOM_PART_HEIGHT, MAIN_WIN_WIDTH, TOP_PART_HEIGHT + MIDDLE_PART_HEIGHT, 0
         )
         self.control_explain.bkgd(curses.color_pair(4))
@@ -65,6 +86,10 @@ class StatusMonitor:
             1, 5, "q: quit this / a: slow / s: normal / d: fast / p: return to select"
         )
         self.control_explain.refresh()
+
+        self.main_panel = curses.panel.new_panel(self.window)
+        self.main_panel.top()
+        curses.panel.update_panels()
 
     def update_request_status(self, interval: int):
         self.update_rate_limit()
@@ -100,13 +125,11 @@ class StatusMonitor:
         self.api_monitor.addstr(4, self.subwin_width - 1 - len(now) - 1, now)
         self.api_monitor.refresh()
 
-    def update_recent_log(
-        self, battle_id: str, tweet_date: dt.datetime, now: dt.datetime
-    ):
-
-        # 記錄ID追記
-        self.recent_pad.scroll()
-
+    def _recent_log_base_print(self):
+        """
+        救援IDログスペースの更新時基本描画。
+        枠線の描画とヘッダの再描画を行う。
+        """
         # title
         self.recent_pad.addstr(
             1, 1, "".join([" " for index in range(self.subwin_width - 2)])
@@ -124,6 +147,15 @@ class StatusMonitor:
             1,
             "".join([" " for index in range(self.subwin_width - 2)]),
         )
+        self.recent_pad.border()
+
+    def update_recent_log(
+        self, battle_id: str, tweet_date: dt.datetime, now: dt.datetime
+    ):
+
+        # 記錄ID追記
+        self.recent_pad.scroll()
+        self._recent_log_base_print()
         self.recent_pad.addstr(
             MIDDLE_PART_HEIGHT - 2,
             2,
@@ -131,9 +163,16 @@ class StatusMonitor:
                 battle_id, tweet_date.strftime("%H:%M:%S"), now - tweet_date
             ),
         )
-        self.recent_pad.border()
-
         self.recent_pad.refresh()
+
+    def switch_pause_panel(self, enable_copy: bool):
+        if enable_copy:
+            self.main_panel.top()
+            self.window.refresh()
+        else:
+            self.paused_panel.top()
+            self.paused_win.refresh()
+        curses.panel.update_panels()
 
     def error_update(self, error: RequestFaildError):
         message = str(error.status_code) + " : " + error.sumally
@@ -155,7 +194,6 @@ class StatusMonitor:
 
         now = dt.datetime.now().strftime("%H:%M:%S")
         self.api_monitor.addstr(4, self.subwin_width - 1 - len(now) - 1, now)
-        self.recent_pad.refresh()
         self.api_monitor.refresh()
 
     def update_rate_limit(self):

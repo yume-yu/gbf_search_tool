@@ -1,0 +1,11 @@
+[global]
+Tweet_limit = 100
+Tweet_id_buffer = 100
+Interval_pattern = [ 1.0, 2.5, 4.0,]
+Support_Muiltibyte = true
+
+[APIkeys]
+API_Key = "mbDy96X9XJSwqJtIBU8MBWbXX"
+API_Key_Secret = "of7WtSpir4qPqY3uoHhfb5p0m8EsiABzAaqCAPq3aJBTSsnsyx"
+Accsess_Token = "216580403-K3oeJc9v180u53xhntOQGr4nZwfv2oRw4AlQg2Jp"
+Accsess_Token_Secret = "cw5pcMp04XiRNvk4gZLkzAv61pqHnZidu1dYE0nMpoB8D"
