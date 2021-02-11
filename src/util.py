@@ -1,4 +1,5 @@
 import datetime as dt
+import platform
 import re
 from pprint import pprint
 
@@ -27,6 +28,8 @@ TOP_PART_HEIGHT = 4
 MIDDLE_PART_HEIGHT = 11
 BOTTOM_PART_HEIGHT = 4
 MAIN_WIN_HEIGHT = TOP_PART_HEIGHT + MIDDLE_PART_HEIGHT + BOTTOM_PART_HEIGHT
+
+IS_WINDOWS = True if platform.system() == "Windows" else False
 
 TOML_FILE_NAME = "config.toml"
 

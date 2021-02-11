@@ -12,8 +12,9 @@ import datetime as dt
 import time
 
 from tweet import RequestFaildError
-from util import (BOTTOM_PART_HEIGHT, JST, MAIN_WIN_HEIGHT, MAIN_WIN_WIDTH,
-                  MIDDLE_PART_HEIGHT, TOP_PART_HEIGHT, gbss_addstr)
+from util import (BOTTOM_PART_HEIGHT, IS_WINDOWS, JST, MAIN_WIN_HEIGHT,
+                  MAIN_WIN_WIDTH, MIDDLE_PART_HEIGHT, TOP_PART_HEIGHT,
+                  gbss_addstr)
 
 PAUSED_STR = "-- PAUSE --"
 
@@ -89,7 +90,8 @@ class StatusMonitor:
 
         self.main_panel = curses.panel.new_panel(self.window)
         self.main_panel.top()
-        curses.panel.update_panels()
+        if not IS_WINDOWS:
+            curses.panel.update_panels()
 
     def update_request_status(self, interval: int):
         self.update_rate_limit()
@@ -172,7 +174,8 @@ class StatusMonitor:
         else:
             self.paused_panel.top()
             self.paused_win.refresh()
-        curses.panel.update_panels()
+        if not IS_WINDOWS:
+            curses.panel.update_panels()
 
     def error_update(self, error: RequestFaildError):
         message = str(error.status_code) + " : " + error.sumally
